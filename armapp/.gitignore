@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+# secrets / build artifacts (re-extracted / rebuilt per machine)
+app/src/main/assets/adbkey.pem
+app/src/main/assets/r08waked
+*.apk

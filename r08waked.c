@@ -134,6 +134,10 @@ int main(void) {
                 struct pollfd pfd = { fd, POLLIN, 0 };
                 int pr = poll(&pfd, 1, POLL_MS);
                 if (pr < 0) { if (errno == EINTR) continue; alive = 0; break; }
+                // Ring BLE dropped while the panel was on: the fd reports POLLHUP/ERR.
+                // Break out to reopen+regrab the new device; otherwise poll would spin
+                // on the dead fd forever and never catch taps again after reconnect.
+                if (pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) { alive = 0; break; }
                 if (pr == 0) { // idle timeout -> check screen
                     if (!screen_on()) {
                         set_grab(fd, 1);

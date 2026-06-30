@@ -198,11 +198,34 @@ adb -s "$GL" shell pkill r08waked
 
 ---
 
-## 永続化（再起動対応）
+## 永続化（再起動対応）＝ 自己 arm アプリ `armapp/`（採用）
 
-`setsid` 起動は adb 切断・自律サスペンドを生き残るが、**reboot では消える**（Android では起動時に shell uid のプロセスを自動起動できない）。よって **グラス再起動後は `./arm-r08wake.sh` を 1 回**実行する。
+`setsid` 起動は adb 切断・自律サスペンドを生き残るが、**reboot では消える**（非 root の Android では起動時に shell uid のプロセスを自動起動できない）。これを **companion も常時 USB も使わずグラス単独**で立て直すのが `armapp/`（`com.hacha.r08wake`）。
 
-完全自動にしたい場合は、R08-Access-Bridge の武装済み shell bridge（reboot self-heal を持つ）の起動シーケンスに本バイナリの launch を相乗りさせる、という拡張余地がある。
+仕組み（実機検証 2026-06-30）：
+- 一度だけ shell で **`persist.adb.tcp.port=5555`** を設定 → **再起動後も adbd が `*:5555`（loopback 127.0.0.1:5555 含む）で待受**する（shell で設定可・再起動で残る・実機確認）。
+- アプリは **信頼済み adb 鍵を内蔵**（companion が pairing 済みの `adb_keys` の「R08 Companion」鍵を流用＝kadb の `adbkey.pem`）し、**kadb で 127.0.0.1:5555 に loopback 接続**→ adbd が shell uid のシェルを与える → そこで r08waked を deploy＋`setsid` 起動。wifi も外部ホストも不要。
+- アプリ起動（`MainActivity.onCreate`）で自動 arm、ボタンでも arm。
+
+**運用：再起動後にグラスで R08 Wake を1回開く** → 自己 arm → wake 復活。companion・USB・wifi 不要。
+
+### 完全自動（BootReceiver）は ROM がブロック（不可）
+
+`RECEIVE_BOOT_COMPLETED` の受信は、この Rokid ROM が **`Background execution Third-Party APP not allowed`** でサードパーティに対し拒否する（`deviceidle whitelist` / `appops RUN_ANY_IN_BACKGROUND` でも解除不可・実機確認）。よって **ゼロタッチ自動 arm は不可**、「アプリを1回開く」が必要（許容済みの手動1ステップ）。
+
+### 一度だけのセットアップ（USB 一回・以後不要）
+1. `adb -s <glasses> shell setprop persist.adb.tcp.port 5555`（再起動で残る／消えたら再設定）
+2. 信頼済み adb 鍵をアプリに同梱（`armapp/app/src/main/assets/adbkey.pem`。companion の `files/kadb/adbkey.pem` を `run-as` で抽出したもの）
+3. `armapp` をビルドしてグラスに install、一度開く
+
+ビルド：`armapp/` で fork と同じ JDK21 上書き wrapper 起動（`R08-Access-Bridge/R08WAKE-INTEGRATION.md` 参照）。APK: `R08Wake/R08Wake-selfarm-debug.apk`。
+
+### セキュリティ代償（了承の上）
+- adbd が LAN に常時 `*:5555` で待受（key 認証付き）。
+- アプリに adb 秘密鍵を内蔵。
+- いずれも個人デバイス／自宅 Wi-Fi 前提。
+
+> 旧案（companion 改造で bridge arm 時に r08waked を起動）は、ROM の self-heal 不安定・companion 必須のため**廃止**。fork（`R08-Access-Bridge/`）はナビ用に Anezium 無改変版を使えば不要。ナビ（リング BLE 接続）は引き続き R08-Access-Bridge が提供する＝本 wake はその上で共存。
 
 ---
 
