@@ -218,7 +218,19 @@ adb -s "$GL" shell pkill r08waked
 2. 信頼済み adb 鍵をアプリに同梱（`armapp/app/src/main/assets/adbkey.pem`。companion の `files/kadb/adbkey.pem` を `run-as` で抽出したもの）
 3. `armapp` をビルドしてグラスに install、一度開く
 
-ビルド：`armapp/` で fork と同じ JDK21 上書き wrapper 起動（`R08-Access-Bridge/R08WAKE-INTEGRATION.md` 参照）。APK: `R08Wake/R08Wake-selfarm-debug.apk`。
+ビルド（`armapp/`）：kadb が Java21 バイトコードなので **JDK21** が要る。リポジトリに unix `gradlew` は無いので wrapper jar を直叩き（マシンの `~/.gradle/gradle.properties` が JDK17 を指す場合は `-Dorg.gradle.java.home` で上書き）：
+
+```sh
+cd RokidApps/R08Wake/armapp
+JBR="/Applications/Android Studio.app/Contents/jbr/Contents/Home"   # JDK21 (Android Studio 同梱)
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
+"$JBR/bin/java" -Dorg.gradle.java.home="$JBR" \
+  -classpath gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain \
+  :app:assembleDebug --no-daemon --console=plain
+# -> app/build/outputs/apk/debug/app-debug.apk
+```
+
+同梱物（gitignore 済・別マシンでは要再生成）：`app/src/main/assets/r08waked`（`../build.sh` の成果物）と `app/src/main/assets/adbkey.pem`（信頼済み adb 鍵）。APK: `R08Wake/R08Wake-selfarm-debug.apk`。
 
 ### セキュリティ代償（了承の上）
 - adbd が LAN に常時 `*:5555` で待受（key 認証付き）。
