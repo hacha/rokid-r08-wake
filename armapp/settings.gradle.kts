@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "R08WakeArm"
+rootProject.name = "RokidR08WakeArm"
 include(":app")

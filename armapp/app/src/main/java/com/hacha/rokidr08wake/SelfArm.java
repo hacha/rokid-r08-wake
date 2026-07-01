@@ -1,4 +1,4 @@
-package com.hacha.r08wake;
+package com.hacha.rokidr08wake;
 
 import android.content.Context;
 import android.util.Base64;
@@ -23,7 +23,7 @@ import java.util.Collections;
  * process after a reboot on a non-rooted build without an external host (no companion / no USB).
  */
 final class SelfArm {
-    static final String TAG = "R08WakeArm";
+    static final String TAG = "RokidR08WakeArm";
 
     private static final String HOST = "127.0.0.1";
     private static final int PORT = 5555;

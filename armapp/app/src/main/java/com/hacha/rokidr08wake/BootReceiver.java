@@ -1,4 +1,4 @@
-package com.hacha.r08wake;
+package com.hacha.rokidr08wake;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

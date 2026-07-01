@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hacha.r08wake"
+    namespace = "com.hacha.rokidr08wake"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hacha.r08wake"
+        applicationId = "com.hacha.rokidr08wake"
         minSdk = 31
         targetSdk = 34
         versionCode = 1

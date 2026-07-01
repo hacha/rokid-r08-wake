@@ -1,4 +1,4 @@
-# R08Wake
+# RokidR08Wake
 
 ***English** · [日本語](README.ja.md)*
 
@@ -16,7 +16,7 @@ Prerequisite: R08-Access-Bridge is installed on the glasses and the ring already
 
 ### A. Production: survives reboot (recommended)
 
-Use the self-arm app `armapp/` (`com.hacha.r08wake`), which re-arms the glasses on its own. **No companion, no permanent USB, no Wi-Fi needed.**
+Use the self-arm app `armapp/` (`com.hacha.rokidr08wake`), which re-arms the glasses on its own. **No companion, no permanent USB, no Wi-Fi needed.**
 
 **One-time setup (once over USB, never again)**
 
@@ -25,7 +25,7 @@ Use the self-arm app `armapp/` (`com.hacha.r08wake`), which re-arms the glasses 
    ```sh
    adb -s <glasses> shell setprop persist.adb.tcp.port 5555
    ```
-3. Build `armapp` and install it on the glasses (bundle a trusted adb key and `r08waked` under `assets`; build steps and key extraction are in [Persistence details](#persistence-reboot-support-armapp)). A prebuilt APK is `R08Wake-selfarm-debug.apk`.
+3. Build `armapp` and install it on the glasses (bundle a trusted adb key and `r08waked` under `assets`; build steps and key extraction are in [Persistence details](#persistence-reboot-support-armapp)). A prebuilt APK is `RokidR08Wake-selfarm-debug.apk`.
 
 **Daily use**
 
@@ -215,7 +215,7 @@ Cross-compiles for `aarch64-linux-android` using the NDK under `$ANDROID_SDK_ROO
 
 ## Persistence (reboot support): armapp
 
-A `setsid` launch survives adb disconnect and autonomous suspend, but is **gone after a reboot** (non-root Android can't auto-start a `shell` uid process at boot). `armapp/` (`com.hacha.r08wake`) rebuilds it **from the glasses alone, with no companion and no permanent USB**. For usage, see [A. Production](#a-production-survives-reboot-recommended) above. This section covers the mechanism and build details.
+A `setsid` launch survives adb disconnect and autonomous suspend, but is **gone after a reboot** (non-root Android can't auto-start a `shell` uid process at boot). `armapp/` (`com.hacha.rokidr08wake`) rebuilds it **from the glasses alone, with no companion and no permanent USB**. For usage, see [A. Production](#a-production-survives-reboot-recommended) above. This section covers the mechanism and build details.
 
 Mechanism (verified on device 2026-06-30):
 - Set **`persist.adb.tcp.port=5555`** once from the shell → **after a reboot, adbd keeps listening on `*:5555` (including loopback 127.0.0.1:5555)** (settable from the shell, survives reboot, confirmed on device).
@@ -234,7 +234,7 @@ Receiving `RECEIVE_BOOT_COMPLETED` is denied to third parties by this Rokid ROM 
 Build (`armapp/`): kadb is Java 21 bytecode, so **JDK 21** is required. The repo has no unix `gradlew`, so invoke the wrapper jar directly (if your machine's `~/.gradle/gradle.properties` points at JDK 17, override with `-Dorg.gradle.java.home`):
 
 ```sh
-cd RokidApps/R08Wake/armapp
+cd RokidApps/RokidR08Wake/armapp
 JBR="/Applications/Android Studio.app/Contents/jbr/Contents/Home"   # JDK21 (bundled with Android Studio)
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 "$JBR/bin/java" -Dorg.gradle.java.home="$JBR" \
@@ -243,7 +243,7 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Bundled artifacts (gitignored; regenerate on another machine): `app/src/main/assets/r08waked` (output of `../build.sh`) and `app/src/main/assets/adbkey.pem` (the trusted adb key). APK: `R08Wake/R08Wake-selfarm-debug.apk`.
+Bundled artifacts (gitignored; regenerate on another machine): `app/src/main/assets/r08waked` (output of `../build.sh`) and `app/src/main/assets/adbkey.pem` (the trusted adb key). APK: `RokidR08Wake/RokidR08Wake-selfarm-debug.apk`.
 
 ### Security trade-offs (accepted)
 - adbd permanently listens on `*:5555` on the LAN (with key authentication).
