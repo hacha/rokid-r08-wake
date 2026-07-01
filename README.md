@@ -25,7 +25,7 @@ Use the self-arm app `armapp/` (`com.hacha.rokidr08wake`), which re-arms the gla
    ```sh
    adb -s <glasses> shell setprop persist.adb.tcp.port 5555
    ```
-3. Build `armapp` and install it on the glasses (bundle a trusted adb key and `r08waked` under `assets`; build steps and key extraction are in [Persistence details](#persistence-reboot-support-armapp)). A prebuilt APK is `RokidR08Wake-selfarm-debug.apk`.
+3. Build `armapp` and install it on the glasses (bundle a trusted adb key and `r08waked` under `assets`; build steps and key extraction are in [Persistence details](#persistence-reboot-support-armapp)). Build the APK yourself — none is distributed, because it embeds your trusted adb private key (see the warning below).
 
 **Daily use**
 
@@ -226,6 +226,8 @@ Mechanism (verified on device 2026-06-30):
 
 Receiving `RECEIVE_BOOT_COMPLETED` is denied to third parties by this Rokid ROM with **`Background execution Third-Party APP not allowed`** (not liftable via `deviceidle whitelist` / `appops RUN_ANY_IN_BACKGROUND` — confirmed on device). So **zero-touch auto-arm is not possible**; "open the app once" is required (an acceptable one-step manual action).
 
+(The repo still ships a `BootReceiver` that tries to arm on boot as a best-effort attempt, but the block above means it won't actually arm on this ROM — so opening the app once remains necessary.)
+
 ### One-time setup (once over USB, never again)
 1. `adb -s <glasses> shell setprop persist.adb.tcp.port 5555` (survives reboot / re-set if it's gone)
 2. Bundle a trusted adb key into the app (`armapp/app/src/main/assets/adbkey.pem` — the companion's `files/kadb/adbkey.pem` extracted via `run-as`)
@@ -234,7 +236,7 @@ Receiving `RECEIVE_BOOT_COMPLETED` is denied to third parties by this Rokid ROM 
 Build (`armapp/`): kadb is Java 21 bytecode, so **JDK 21** is required. The repo has no unix `gradlew`, so invoke the wrapper jar directly (if your machine's `~/.gradle/gradle.properties` points at JDK 17, override with `-Dorg.gradle.java.home`):
 
 ```sh
-cd RokidApps/RokidR08Wake/armapp
+cd armapp   # from the repo root
 JBR="/Applications/Android Studio.app/Contents/jbr/Contents/Home"   # JDK21 (bundled with Android Studio)
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 "$JBR/bin/java" -Dorg.gradle.java.home="$JBR" \
@@ -243,7 +245,9 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Bundled artifacts (gitignored; regenerate on another machine): `app/src/main/assets/r08waked` (output of `../build.sh`) and `app/src/main/assets/adbkey.pem` (the trusted adb key). APK: `RokidR08Wake/RokidR08Wake-selfarm-debug.apk`.
+Bundled artifacts (gitignored; regenerate on another machine): `app/src/main/assets/r08waked` (output of `../build.sh`) and `app/src/main/assets/adbkey.pem` (the trusted adb key). The build output is `app/build/outputs/apk/debug/app-debug.apk`.
+
+> ⚠️ **Never distribute the built APK.** It embeds `adbkey.pem` — a private adb key trusted by the glasses' adbd. Anyone who can reach the glasses' adbd (`*:5555`) with that key gets a `shell`-uid shell. Build your own and keep the APK private.
 
 ### Security trade-offs (accepted)
 - adbd permanently listens on `*:5555` on the LAN (with key authentication).
@@ -266,3 +270,9 @@ Bundled artifacts (gitignored; regenerate on another machine): `app/src/main/ass
 
 - [Anezium/R08-Access-Bridge](https://github.com/Anezium/R08-Access-Bridge) — OSS that turns the R08 ring into glasses navigation. The ring connects **directly over BLE to the glasses** (not via a phone). This tool complements its missing wake.
 - `appType` is an output mode that persists on the R08 ring side. Changing it via `AppType probe` etc. alters tap/double-tap behavior, so if things get weird, re-select **Ring modes → Stable mode** in R08-Access-Bridge (re-send `appType 1`).
+
+---
+
+## License
+
+[MIT](LICENSE)
