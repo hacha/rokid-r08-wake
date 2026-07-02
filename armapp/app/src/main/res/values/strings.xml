@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">R08 Wake</string>
+    <string name="accessibility_label">R08 Wake auto-arm</string>
+    <string name="accessibility_description">Re-launches the r08waked tap-wake daemon after every reboot. This service intercepts nothing; it is only used as a boot-time trigger because a stopped app gets no BOOT_COMPLETED on this ROM.</string>
 </resources>

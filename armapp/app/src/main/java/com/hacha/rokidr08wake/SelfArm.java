@@ -29,7 +29,30 @@ final class SelfArm {
     private static final int PORT = 5555;
     private static final String REMOTE = "/data/local/tmp/r08waked";
 
+    // Boot/auto arm retry window: adbd's loopback listener (and the wider system) may not be
+    // ready the instant we are asked to arm right after a reboot, so retry over ~1 min.
+    private static final int ARM_ATTEMPTS = 12;
+    private static final long ARM_RETRY_MS = 5000L;
+
     private static boolean certConfigured;
+
+    /**
+     * Blocking (re)arm with retries; call from a background thread. Returns the final status.
+     * {@code who} tags the log lines (e.g. "boot", "accessibility").
+     */
+    static String armLoop(Context ctx, String who) {
+        String result = "arm not attempted";
+        for (int attempt = 1; attempt <= ARM_ATTEMPTS; attempt++) {
+            result = arm(ctx);
+            if (result.startsWith("armed")) {
+                Log.i(TAG, who + " arm ok (attempt " + attempt + ")");
+                return result;
+            }
+            Log.w(TAG, who + " arm attempt " + attempt + "/" + ARM_ATTEMPTS + " -> " + result);
+            try { Thread.sleep(ARM_RETRY_MS); } catch (InterruptedException e) { return result; }
+        }
+        return result;
+    }
 
     /** Connect over loopback and (re)deploy + launch r08waked. Returns a status string. */
     static synchronized String arm(Context ctx) {

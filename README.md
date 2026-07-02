@@ -26,12 +26,13 @@ Use the self-arm app `armapp/` (`com.hacha.rokidr08wake`), which re-arms the gla
    adb -s <glasses> shell setprop persist.adb.tcp.port 5555
    ```
 3. Build `armapp` and install it on the glasses (bundle a trusted adb key and `r08waked` under `assets`; build steps and key extraction are in [Persistence details](#persistence-reboot-support-armapp)). Build the APK yourself — none is distributed, because it embeds your trusted adb private key (see the warning below).
+4. Open "R08 Wake" once and tap **"Enable auto-arm at boot"** → in Settings > Accessibility, turn on **R08 Wake auto-arm**. This one accessibility toggle is what makes wake survive reboots with zero touch (see [Persistence details](#persistence-reboot-support-armapp) for why).
 
 **Daily use**
 
-- **After a reboot, just open "R08 Wake" once on the glasses.** The app connects via adb to loopback 127.0.0.1:5555 → gets a `shell` uid shell → deploys and `setsid`-launches `r08waked` → wake is back.
-- Once running, it survives adb disconnect and autonomous suspend. You don't need to touch the app again until the next reboot.
-- (Fully zero-touch automation via a BootReceiver is **not possible** — this ROM blocks third-party background launch. Opening the app once is the minimal manual step.)
+- **Nothing.** After every reboot the app re-arms itself with no manual step: the system binds the accessibility service at boot, which relaunches `r08waked` (connects via adb to loopback 127.0.0.1:5555 → `shell` uid → deploys and `setsid`-launches the daemon). The button in the UI shows "Auto-arm at boot: ON" once enabled.
+- Once running, it survives adb disconnect and autonomous suspend.
+- If you ever disable the accessibility service, fall back to opening the app once (or the button) to re-arm on demand.
 
 ### B. Run it right now, by hand (dev / quick try)
 
@@ -220,18 +221,23 @@ A `setsid` launch survives adb disconnect and autonomous suspend, but is **gone 
 Mechanism (verified on device 2026-06-30):
 - Set **`persist.adb.tcp.port=5555`** once from the shell → **after a reboot, adbd keeps listening on `*:5555` (including loopback 127.0.0.1:5555)** (settable from the shell, survives reboot, confirmed on device).
 - The app **embeds a trusted adb key** (reusing the companion's already-paired "R08 Companion" key from `adb_keys` = kadb's `adbkey.pem`) and **connects via kadb to 127.0.0.1:5555 over loopback** → adbd hands it a `shell` uid shell → there it deploys `r08waked` and `setsid`-launches it. No Wi-Fi, no external host.
-- Arms automatically on app launch (`MainActivity.onCreate`), or via the button.
+- Arms automatically on app launch (`MainActivity.onCreate`), on the button, and — the reboot-survival path — from **`ArmAccessibilityService.onServiceConnected()`** which the system fires at boot (see below).
 
-### Full automation (BootReceiver) is blocked by the ROM (not possible)
+### Zero-touch auto-arm at boot: an AccessibilityService (verified 2026-07-02)
 
-Receiving `RECEIVE_BOOT_COMPLETED` is denied to third parties by this Rokid ROM with **`Background execution Third-Party APP not allowed`** (not liftable via `deviceidle whitelist` / `appops RUN_ANY_IN_BACKGROUND` — confirmed on device). So **zero-touch auto-arm is not possible**; "open the app once" is required (an acceptable one-step manual action).
+`BOOT_COMPLETED` is unreliable here: on this ROM a third-party app is put back into the **`stopped`** state on every boot, and Android delivers **no broadcast, alarm, or job to a stopped package** (`FLAG_EXCLUDE_STOPPED_PACKAGES`). Opening the app clears `stopped`, but the flag reverts on the next reboot — so a `BootReceiver` alone never fires.
 
-(The repo still ships a `BootReceiver` that tries to arm on boot as a best-effort attempt, but the block above means it won't actually arm on this ROM — so opening the app once remains necessary.)
+The one component the system binds **directly** at boot — bypassing the broadcast gate — is an **AccessibilityService** (bound from the `enabled_accessibility_services` secure setting; the bind starts the component *and* clears `stopped` as a side effect). The coexisting R08-Access-Bridge relies on the same mechanism, which is how we knew it works on this exact ROM.
+
+So `armapp` ships a minimal **`ArmAccessibilityService`** that intercepts nothing and only calls `SelfArm.armLoop()` in `onServiceConnected()`. Enable it once in Settings > Accessibility ("R08 Wake auto-arm") and every reboot re-arms with zero touch — **confirmed on device**: after a reboot with the app never opened, the daemon was up (`accessibility connected -> arming` → `armed OK`), and `stopped=false` had been cleared by the bind. `SelfArm.arm()` is `synchronized` and does `pkill` + relaunch, so it's idempotent even when the (best-effort, still-shipped) `BootReceiver` also happens to fire.
+
+Note: the earlier belief that the ROM hard-blocks `RECEIVE_BOOT_COMPLETED` was a misdiagnosis — the real gate was the `stopped` flag (compounded by a `TEST_ONLY` install via `adb install -t`). Once the app is un-stopped by the accessibility bind and installed non-test-only, `BOOT_COMPLETED` is in fact delivered too; it's just no longer the load-bearing path.
 
 ### One-time setup (once over USB, never again)
 1. `adb -s <glasses> shell setprop persist.adb.tcp.port 5555` (survives reboot / re-set if it's gone)
 2. Bundle a trusted adb key into the app (`armapp/app/src/main/assets/adbkey.pem` — the companion's `files/kadb/adbkey.pem` extracted via `run-as`)
-3. Build `armapp`, install it on the glasses, and open it once
+3. Build `armapp` and install it on the glasses. Install **without** `-t` (`adb install -r app-debug.apk`) so the package isn't flagged `TEST_ONLY`.
+4. Open it once and enable **R08 Wake auto-arm** in Settings > Accessibility (the button in the app opens the right screen). From then on it re-arms itself on every reboot.
 
 Build (`armapp/`): kadb is Java 21 bytecode, so **JDK 21** is required. The repo has no unix `gradlew`, so invoke the wrapper jar directly (if your machine's `~/.gradle/gradle.properties` points at JDK 17, override with `-Dorg.gradle.java.home`):
 
