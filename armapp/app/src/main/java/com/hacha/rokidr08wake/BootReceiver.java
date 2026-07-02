@@ -6,8 +6,10 @@ import android.content.Intent;
 import android.util.Log;
 
 /**
- * On boot, (re)arm r08waked via loopback ADB. Retries a few times because adbd / the ring BLE
- * may not be ready the instant BOOT_COMPLETED fires.
+ * On boot, (re)arm r08waked via loopback ADB. Kept as a belt-and-suspenders path: on this glasses
+ * ROM the app is put back into the "stopped" state on every boot, so BOOT_COMPLETED is usually
+ * NOT delivered here -- {@link ArmAccessibilityService} is the reliable boot-time trigger. This
+ * still fires on ROMs/boots where the broadcast does arrive.
  */
 public final class BootReceiver extends BroadcastReceiver {
     @Override
@@ -20,18 +22,10 @@ public final class BootReceiver extends BroadcastReceiver {
         final PendingResult pending = goAsync();
         new Thread(() -> {
             try {
-                for (int attempt = 1; attempt <= 4; attempt++) {
-                    String result = SelfArm.arm(app);
-                    if (result.startsWith("armed")) {
-                        Log.i(SelfArm.TAG, "boot arm ok (attempt " + attempt + ")");
-                        break;
-                    }
-                    Log.w(SelfArm.TAG, "boot arm attempt " + attempt + " -> " + result);
-                    try { Thread.sleep(2500L); } catch (InterruptedException e) { break; }
-                }
+                SelfArm.armLoop(app, "boot");
             } finally {
                 pending.finish();
             }
-        }).start();
+        }, "r08-arm-boot").start();
     }
 }

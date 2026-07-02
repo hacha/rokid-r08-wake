@@ -2,4 +2,5 @@ r08waked
 *.log
 .DS_Store
 *.apk
+.idea/
 armapp-keymat/

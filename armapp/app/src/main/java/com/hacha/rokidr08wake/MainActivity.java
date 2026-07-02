@@ -1,9 +1,12 @@
 package com.hacha.rokidr08wake;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,8 +15,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * Minimal glasses UI. Opening the app (a) un-stops it so BOOT_COMPLETED is delivered on future
- * boots, and (b) auto-arms once. A line-framed "Arm" control re-arms on demand.
+ * Minimal glasses UI. Opening the app auto-arms once ("Arm now" re-arms on demand). For arming
+ * that survives a reboot without opening the app, the user enables {@link ArmAccessibilityService}
+ * once via the second control (Settings > Accessibility) -- see that class for why a broadcast
+ * receiver isn't enough on this ROM.
  *
  * Glasses display rules applied: solid black == see-through (no coloured background), the whole
  * UI is confined to the top 70% (the region visible when the glasses are worn), and the layout is
@@ -21,6 +26,7 @@ import android.widget.TextView;
  */
 public final class MainActivity extends Activity {
     private TextView status;
+    private TextView autoArm;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +76,24 @@ public final class MainActivity extends Activity {
         arm.setOnFocusChangeListener((v, hasFocus) -> applyButtonStyle((TextView) v, hasFocus, d));
         arm.setOnClickListener(v -> runArm());
 
+        // Second control: opens Accessibility settings so the user can enable boot-survivable
+        // auto-arm (ArmAccessibilityService). Only needed once; then every reboot re-arms itself.
+        autoArm = new TextView(this);
+        autoArm.setTextSize(16);
+        autoArm.setGravity(Gravity.CENTER);
+        autoArm.setPadding((int) (22 * d), (int) (10 * d), (int) (22 * d), (int) (10 * d));
+        autoArm.setClickable(true);
+        autoArm.setFocusable(true);
+        autoArm.setDefaultFocusHighlightEnabled(false);
+        LinearLayout.LayoutParams autoArmLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        autoArmLp.topMargin = (int) (10 * d);
+        autoArm.setLayoutParams(autoArmLp);
+        applyButtonStyle(autoArm, false, d);
+        autoArm.setOnFocusChangeListener((v, hasFocus) -> applyButtonStyle((TextView) v, hasFocus, d));
+        autoArm.setOnClickListener(v -> startActivity(
+                new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+
         status = new TextView(this);
         status.setTextColor(0xFFCCCCCC);
         status.setTextSize(15);
@@ -86,6 +110,7 @@ public final class MainActivity extends Activity {
         content.addView(title);
         content.addView(rule);
         content.addView(arm);
+        content.addView(autoArm);
         content.addView(sv);
 
         // 70 / 30 vertical split: content on top, empty (see-through) band at the bottom.
@@ -98,6 +123,30 @@ public final class MainActivity extends Activity {
 
         // auto-arm on launch
         runArm();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Reflect whether boot-survivable auto-arm is enabled (state can change while we're away).
+        boolean on = isAutoArmEnabled();
+        autoArm.setText(on ? "Auto-arm at boot: ON" : "Enable auto-arm at boot");
+    }
+
+    /** True if our AccessibilityService is in the enabled-services secure setting. */
+    private boolean isAutoArmEnabled() {
+        String enabled = Settings.Secure.getString(
+                getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (TextUtils.isEmpty(enabled)) {
+            return false;
+        }
+        String me = getPackageName() + "/" + ArmAccessibilityService.class.getName();
+        for (String s : enabled.split(":")) {
+            if (me.equals(s)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Line-framed control: black fill + white border by default, inverts to white when focused. */
