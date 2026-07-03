@@ -2,6 +2,9 @@
 
 *[English](README.md) · **日本語***
 
+> [!NOTE]
+> **本ツールは役目を終えました：機能は [R08-Access-Bridge v1.5.0](https://github.com/Anezium/R08-Access-Bridge/releases/tag/v1.5.0)（2026-07）に取り込まれました。** リング入力によるディスプレイ wake が本体に実装され、ここで開発した再起動耐性のある self-arm 手法は accessibility watchdog リカバリの基盤として採用されています。R08-Access-Bridge ≥ 1.5.0 を使っていれば本ツールは不要です。このリポジトリは仕組みの解説・リファレンスとして残します。
+
 R08 スマートリングの **単発タップで Rokid Glasses をスリープ復帰**させる、shell uid で動く小さな native 常駐ヘルパー。あわせて、ペアした iPhone 等で **Apple Music が暴発する問題**も抑止する。
 
 リングのナビ操作そのものは [Anezium/R08-Access-Bridge](https://github.com/Anezium/R08-Access-Bridge)（リング→グラス直 BLE）が担う。本ツールはそこに**無い**「画面 OFF からの単タップ wake」だけを補い、R08-Access-Bridge と共存する。

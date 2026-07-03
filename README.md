@@ -2,6 +2,9 @@
 
 ***English** · [日本語](README.ja.md)*
 
+> [!NOTE]
+> **This tool has served its purpose: its functionality was incorporated upstream into [R08-Access-Bridge v1.5.0](https://github.com/Anezium/R08-Access-Bridge/releases/tag/v1.5.0) (2026-07).** Ring input now wakes the display natively, and the boot-survivable self-arm technique developed here became the foundation of its accessibility watchdog recovery. If you run R08-Access-Bridge ≥ 1.5.0, you don't need this tool anymore. This repo stays up as a reference for how it all works.
+
 A tiny native daemon (running as the `shell` uid) that **wakes Rokid Glasses from sleep with a single tap** of the R08 smart ring. It also suppresses the **Apple Music auto-play glitch** on a paired iPhone.
 
 Ring navigation itself is handled by [Anezium/R08-Access-Bridge](https://github.com/Anezium/R08-Access-Bridge) (ring → glasses direct BLE). This tool only fills the gap it **lacks** — "single-tap wake from a dark screen" — and coexists with R08-Access-Bridge.
